@@ -1,6 +1,6 @@
 # Fastest GPU kernels, written from scratch.
 
-## Matrix Multiplication
+## H100 BF16 Matrix Multiplication
 
 Matrix multiplication of square bf16 matrices, accumulated in fp32.
 
@@ -20,9 +20,28 @@ Explanation in https://cudaforfun.substack.com/p/outperforming-cublas-on-h100-a-
 ```
 make matmul && out/matmul
 ```
-Example kernels are in [`examples/matmul/`](https://github.com/pranjalssh/fast.cu/tree/main/examples/matmul) and orchestration is in [`matmul.cu`](https://github.com/pranjalssh/fast.cu/blob/main/matmul.cu)
+Example kernels are in [`h100/matmul/`](h100/matmul), and orchestration is
+in [`h100/matmul.cu`](h100/matmul.cu).
 
-## Sum reduction
+## GB300 NVFP4 Matrix Multiplication
+
+The NVFP4 example contains ten complete kernel snapshots, a shared correctness
+and benchmark runner, and a cuBLASLt baseline.
+
+```bash
+make nvfp4
+./out/nvfp4 8192 8192 8192 --rounds 5 --cooldown-sec 8
+
+make nvfp4-ladder
+./out/nvfp4-r0 8192 8192 8192 --rounds 5 --cooldown-sec 8
+./out/nvfp4-r9 8192 8192 8192 --rounds 5 --cooldown-sec 8
+```
+
+This requires a GB300/B300 and CUDA 13.1. See
+[`gb300/nvfp4/README.md`](gb300/nvfp4/README.md) for every optimization
+rung, scheduler controls, correctness-only runs, and benchmark modes.
+
+## H100 Sum Reduction
 
 We compute sum of 2^30 elements.
 
@@ -36,4 +55,4 @@ Kernel: 3240.11 GB/s
 cub Library: 3193 GB/s
 ```
 
-Example kernels are in [`sum.cu`](https://github.com/pranjalssh/fast.cu/tree/main/sum.cu)
+The kernel is in [`h100/sum.cu`](h100/sum.cu).

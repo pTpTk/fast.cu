@@ -27,18 +27,18 @@ void cudaCheck(cudaError_t error, const char *file, int line) {
 }
 #define cudaCheck(err) (cudaCheck(err, __FILE__, __LINE__))
 
-#include "examples/matmul/matmul_1.cuh"
-#include "examples/matmul/matmul_2.cuh"
-#include "examples/matmul/matmul_3.cuh"
-#include "examples/matmul/matmul_4.cuh"
-#include "examples/matmul/matmul_5.cuh"
-#include "examples/matmul/matmul_6.cuh"
-#include "examples/matmul/matmul_7.cuh"
-#include "examples/matmul/matmul_8.cuh"
-#include "examples/matmul/matmul_9.cuh"
-#include "examples/matmul/matmul_10.cuh"
-#include "examples/matmul/matmul_11.cuh"
-#include "examples/matmul/matmul_12.cuh"
+#include "matmul/matmul_1.cuh"
+#include "matmul/matmul_2.cuh"
+#include "matmul/matmul_3.cuh"
+#include "matmul/matmul_4.cuh"
+#include "matmul/matmul_5.cuh"
+#include "matmul/matmul_6.cuh"
+#include "matmul/matmul_7.cuh"
+#include "matmul/matmul_8.cuh"
+#include "matmul/matmul_9.cuh"
+#include "matmul/matmul_10.cuh"
+#include "matmul/matmul_11.cuh"
+#include "matmul/matmul_12.cuh"
 
 std::default_random_engine generator(69);
 cublasHandle_t cublas_handle;
