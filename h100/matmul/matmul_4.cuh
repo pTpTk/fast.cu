@@ -395,8 +395,8 @@ __global__ void __launch_bounds__(NUM_THREADS) matmulKernel4(int M, int N, int K
                 qidx %= QSIZE;
                 empty[qidx].wait(empty[qidx].arrive());
                 cde::cp_async_bulk_tensor_2d_global_to_shared(&sA[qidx*BM*BK], tensorMapA, block_k_iter*BK, num_block_m*BM, full[qidx]);
-                cde::cp_async_bulk_tensor_2d_global_to_shared(&sB[qidx*BN*BK], tensorMapA, block_k_iter*BK, num_block_n*BM, full[qidx]);
-                barrier::arrival_token _ = cuda::device::barrier_arrive_tx(full[qidx], 1, (BM*BK+BK*BN)*sizeof(16));
+                cde::cp_async_bulk_tensor_2d_global_to_shared(&sB[qidx*BN*BK], tensorMapB, block_k_iter*BK, num_block_n*BN, full[qidx]);
+                barrier::arrival_token _ = cuda::device::barrier_arrive_tx(full[qidx], 1, (BM*BK+BK*BN)*sizeof(bf16));
             }
         }
     }
@@ -425,7 +425,7 @@ __global__ void __launch_bounds__(NUM_THREADS) matmulKernel4(int M, int N, int K
         }
 
         uint32_t tid = threadIdx.x % 128;
-        uint32_t lane = tid & 31;
+        uint32_t lane = tid % 32;
         uint32_t warp = tid / 32;
         uint32_t row = warp*16 + lane / 4;
 
