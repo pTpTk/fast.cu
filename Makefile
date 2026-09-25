@@ -20,6 +20,8 @@ NVFP4_SOURCE = $(NVFP4_DIR)/main.cu
 NVFP4_RUNGS = 0 1 2 3 4 5 6 7 8 9
 NVFP4_TARGETS = $(addprefix nvfp4-r,$(NVFP4_RUNGS))
 
+.phony all: matmul
+
 sum: h100/sum.cu
 	$(NVCC_BASE) $^ $(CUDA_OUTPUT_FILE)
 
