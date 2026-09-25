@@ -365,8 +365,7 @@ template<int BM, int BN, int BK, int NUM_THREADS, int QSIZE>
 __global__ void __launch_bounds__(NUM_THREADS) matmulKernel4(int M, int N, int K, bf16* C, const CUtensorMap* tensorMapA, const CUtensorMap* tensorMapB) {
     constexpr int WGMMA_M = 64, WGMMA_K = 16, WGMMA_N=BN;
     constexpr int num_consumer = NUM_THREADS - 1;
-    constexpr int B_WG_M = BM / (NUM_THREADS / 128);
-    extern __shared__ SMem<BM, BN, BK, QSIZE> s;
+    extern __shared__ __align__(128) SMem<BM, BN, BK, QSIZE> s;
     bf16 *sA = s.A;
     bf16 *sB = s.B;
     // Barriers cannot be in the struct and have to be declared this way
@@ -385,13 +384,9 @@ __global__ void __launch_bounds__(NUM_THREADS) matmulKernel4(int M, int N, int K
         cde::fence_proxy_async_shared_cta();
     }
     __syncthreads();
+
     int wg_idx = threadIdx.x / 128;
     int tid = threadIdx.x % 128;
-
-    barrier::arrival_token tokenA, tokenB;
-    int sumLoad = 0, cntLoad = 0;
-    int sumCompute = 0, cntCompute = 0;
-    int sumStore = 0, cntStore = 0;
 
     if(wg_idx == 0) {
         if(tid == 0) {
@@ -421,7 +416,7 @@ __global__ void __launch_bounds__(NUM_THREADS) matmulKernel4(int M, int N, int K
                 bf16 *wgmma_sA = sA + BK*m_it*WGMMA_M + qidx*BK*BM;
                 #pragma unroll
                 for (int k_it = 0; k_it < BK/WGMMA_K; ++k_it) {
-                    wgmma<WGMMA_N, 1, 1, 1, 0, 0>(d[m_it], &wgmma_sA[k_it*WGMMA_K], &sB[k_it*WGMMA_K]);
+                    wgmma<WGMMA_N, 1, 1, 1, 0, 0>(d[m_it], &wgmma_sA[k_it*WGMMA_K], &sB[qidx*BK*BN + k_it*WGMMA_K]);
                 }
             }
             warpgroup_commit_batch();
