@@ -365,7 +365,9 @@ template<int BM, int BN, int BK, int NUM_THREADS, int QSIZE>
 __global__ void __launch_bounds__(NUM_THREADS) matmulKernel4(int M, int N, int K, bf16* C, const CUtensorMap* tensorMapA, const CUtensorMap* tensorMapB) {
     constexpr int WGMMA_M = 64, WGMMA_K = 16, WGMMA_N=BN;
     constexpr int num_consumer = NUM_THREADS - 1;
-    extern __shared__ __align__(128) SMem<BM, BN, BK, QSIZE> s;
+    // Use an unsized array so the launch's dynamic allocation backs the tiles.
+    extern __shared__ __align__(128) uint8_t smem[];
+    SMem<BM, BN, BK, QSIZE> &s = *(SMem<BM, BN, BK, QSIZE>*)smem;
     bf16 *sA = s.A;
     bf16 *sB = s.B;
     // Barriers cannot be in the struct and have to be declared this way
@@ -479,9 +481,9 @@ void runKernel4(int M, int N, int K, bf16 *A, bf16 *B, bf16 *C, int *DB) {
         cudaFuncAttributeMaxDynamicSharedMemorySize, sMemSize));
 
     kernel<<<(M/BM) * (N/BN), NUM_THREADS, sMemSize>>>(M, N, K, C, d_tma_map_A, d_tma_map_B);
+    cudaCheck(cudaGetLastError());
 }
     
 } // namespace M4
 
 using M4::runKernel4;
-    
