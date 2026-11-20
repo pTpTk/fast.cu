@@ -419,7 +419,7 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6_bak(int M, int N,
 }
 
 template<int BM, int BN, int BK, int NUM_THREADS, int QSIZE, int NUM_SM>
-__global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int K, bf16* C, const CUtensorMap* tensorMapA, const CUtensorMap* tensorMapB) {
+__global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int K, bf16* C, const __grid_constant__ CUtensorMap tensorMapA, const __grid_constant__ CUtensorMap tensorMapB) {
     constexpr int WGMMA_M = 64, WGMMA_K = 16, WGMMA_N=BN;
     constexpr int num_consumers = (NUM_THREADS / 128) - 1;
     constexpr int B_WG_M = BM / num_consumers;
@@ -463,8 +463,8 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
             for (int block_k_iter = 0; block_k_iter < num_blocks_k; ++block_k_iter, ++qidx) {
                 if (qidx == QSIZE) qidx = 0;
                 empty[qidx].wait(empty[qidx].arrive());
-                cde::cp_async_bulk_tensor_2d_global_to_shared(&sA[qidx*BK*BM], tensorMapA, block_k_iter*BK, cur_block_m*BM, full[qidx]);
-                cde::cp_async_bulk_tensor_2d_global_to_shared(&sB[qidx*BK*BN], tensorMapB, block_k_iter*BK, cur_block_n*BN, full[qidx]);
+                cde::cp_async_bulk_tensor_2d_global_to_shared(&sA[qidx*BK*BM], &tensorMapA, block_k_iter*BK, cur_block_m*BM, full[qidx]);
+                cde::cp_async_bulk_tensor_2d_global_to_shared(&sB[qidx*BK*BN], &tensorMapB, block_k_iter*BK, cur_block_n*BN, full[qidx]);
                 barrier::arrival_token _ = cuda::device::barrier_arrive_tx(full[qidx], 1, (BK*BN+BK*BM)*sizeof(bf16));
             }
         }
