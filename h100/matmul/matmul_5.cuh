@@ -421,7 +421,7 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel5(int M, int N, int
         for (int i = 0; i < QSIZE; ++i) {
             barrier::arrival_token _ = empty[i].arrive();
         }
-        float d[BM/WGMMA_M][WGMMA_N/16][8];
+        float d[B_WG_M/WGMMA_M][WGMMA_N/16][8];
         memset(d, 0, sizeof(d));
         int qidx = 0;
         for (int block_k_iter = 0; block_k_iter < num_blocks_k; ++block_k_iter, ++qidx) {
@@ -429,8 +429,8 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel5(int M, int N, int
             full[qidx].wait(full[qidx].arrive());
             warpgroup_arrive();
             #pragma unroll    
-            for (int m_it = 0; m_it < BM/WGMMA_M; ++m_it) {
-                bf16 *wgmma_sA = sA + qidx*BK*BM + BK*m_it*WGMMA_M;
+            for (int m_it = 0; m_it < B_WG_M/WGMMA_M; ++m_it) {
+                bf16 *wgmma_sA = sA + qidx*BK*BM + BK*m_it*WGMMA_M + BK*(wg_idx-1)*B_WG_M;
                 #pragma unroll
                 for (int k_it = 0; k_it < BK/WGMMA_K; ++k_it) {
                     wgmma<WGMMA_N, 1, 1, 1, 0, 0>(d[m_it], &wgmma_sA[k_it*WGMMA_K], &sB[qidx*BK*BN + k_it*WGMMA_K]);
@@ -448,8 +448,8 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel5(int M, int N, int
         bf16 *block_C = C + num_block_n*BN*M + num_block_m*BM;
     
         #pragma unroll
-        for (int m_it = 0; m_it < BM/WGMMA_M; ++m_it) {
-            int yo = m_it*WGMMA_M;
+        for (int m_it = 0; m_it < B_WG_M/WGMMA_M; ++m_it) {
+            int yo = m_it*WGMMA_M + (wg_idx-1)*B_WG_M;
             #pragma unroll
             for (int w = 0; w < WGMMA_N/16; ++w) {
                 int col = 16*w + 2*(tid % 4);
