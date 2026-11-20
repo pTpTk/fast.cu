@@ -440,6 +440,7 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
     int cur_block_m = blockIdx.x / 8;
 
     int total_block_m = M / BM;
+    int total_block_n = N / BN;
 
     if (threadIdx.x == 0) {
         for (int i = 0; i < QSIZE; ++i) {
@@ -451,8 +452,8 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
     __syncthreads();
 
 
-    for(; cur_block_m < M; cur_block_m += 4) {
-    for(; cur_block_n < N; cur_block_n += 8) {
+    for(; cur_block_m < total_block_m; cur_block_m += 4) {
+    for(; cur_block_n < total_block_n; cur_block_n += 8) {
 
     // Producer
     if (wg_idx == 0) {
