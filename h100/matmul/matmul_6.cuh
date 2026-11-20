@@ -433,11 +433,11 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
     __shared__ barrier full[QSIZE], empty[QSIZE];
 
     const int num_blocks_k = K / BK;
-    int wg_idx = threadIdx.x / 128;
+    const int wg_idx = threadIdx.x / 128;
+    const int consumer_idx = wg_idx - 1;
     int tid = threadIdx.x % 128;
 
-    int cur_block_n = blockIdx.x % 8;
-    int cur_block_m = blockIdx.x / 8;
+    
 
     int total_block_m = M / BM;
     int total_block_n = N / BN;
@@ -451,9 +451,16 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
     }
     __syncthreads();
 
+    if (wg_idx > 0) {
+        constexpr int num_regs = (num_consumers == 1 ? 256 : (num_consumers == 2 ? 240 : 160));
+        warpgroup_reg_alloc<num_regs>();
+        for (int i = 0; i < QSIZE; ++i) {
+            barrier::arrival_token _ = empty[i].arrive();
+        }
+    }
 
-    for(; cur_block_m < total_block_m; cur_block_m += 4) {
-    for(; cur_block_n < total_block_n; cur_block_n += 8) {
+    for(int cur_block_m = blockIdx.x / 8; cur_block_m < total_block_m; cur_block_m += 4) {
+    for(int cur_block_n = blockIdx.x % 8; cur_block_n < total_block_n; cur_block_n += 8) {
 
     // Producer
     if (wg_idx == 0) {
@@ -470,12 +477,6 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
             }
         }
     } else {
-        constexpr int num_regs = (num_consumers == 1 ? 256 : (num_consumers == 2 ? 240 : 160));
-        warpgroup_reg_alloc<num_regs>();
-        --wg_idx;
-        for (int i = 0; i < QSIZE; ++i) {
-            barrier::arrival_token _ = empty[i].arrive();
-        }
         float d[B_WG_M/WGMMA_M][WGMMA_N/16][8];
         memset(d, 0, sizeof(d));
         int qidx = 0;
@@ -485,7 +486,7 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
             warpgroup_arrive();
             #pragma unroll    
             for (int m_it = 0; m_it < B_WG_M/WGMMA_M; ++m_it) {
-                bf16 *wgmma_sA = sA + qidx*BK*BM + BK*(m_it + wg_idx*B_WG_M/WGMMA_M)*WGMMA_M;
+                bf16 *wgmma_sA = sA + qidx*BK*BM + BK*(m_it + consumer_idx*B_WG_M/WGMMA_M)*WGMMA_M;
                 #pragma unroll
                 for (int k_it = 0; k_it < BK/WGMMA_K; ++k_it) {
                     wgmma<WGMMA_N, 1, 1, 1, 0, 0>(d[m_it], &wgmma_sA[k_it*WGMMA_K], &sB[qidx*BK*BN + k_it*WGMMA_K]);
@@ -504,7 +505,7 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
     
         #pragma unroll
         for (int m_it = 0; m_it < B_WG_M/WGMMA_M; ++m_it) {
-            int yo = m_it*WGMMA_M + wg_idx*B_WG_M;
+            int yo = m_it*WGMMA_M + consumer_idx*B_WG_M;
             #pragma unroll
             for (int w = 0; w < WGMMA_N/16; ++w) {
                 int col = 16*w + 2*(tid % 4);
