@@ -508,8 +508,8 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel7(int M, int N, int
                 // empty[qidx].wait(empty[qidx].arrive());
                 wait(&empty[qidx], p);
                 expect_bytes(&full[qidx], (BK*BN+BK*BM)*sizeof(bf16));
-                cde::cp_async_bulk_tensor_2d_global_to_shared(&sA[qidx*BK*BM], &tensorMapA, block_k_iter*BK, cur_block_m*BM, full[qidx]);
-                cde::cp_async_bulk_tensor_2d_global_to_shared(&sB[qidx*BK*BN], &tensorMapB, block_k_iter*BK, cur_block_n*BN, full[qidx]);
+                load_async(&sA[qidx*BK*BM], &tensorMapA, full[qidx], block_k_iter*BK, cur_block_m*BM);
+                load_async(&sB[qidx*BK*BN], &tensorMapB, full[qidx], block_k_iter*BK, cur_block_n*BN);
                 // barrier::arrival_token _ = cuda::device::barrier_arrive_tx(full[qidx], 1, (BK*BN+BK*BM)*sizeof(bf16));
             }
         }
