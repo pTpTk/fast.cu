@@ -431,20 +431,19 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
     // Barriers cannot be in the struct and have to be declared this way
     #pragma nv_diag_suppress static_var_with_dynamic_init
     __shared__ barrier full[QSIZE], empty[QSIZE];
+    bool full_phase[QSIZE] = {};
 
     const int num_blocks_k = K / BK;
     const int wg_idx = threadIdx.x / 128;
     const int consumer_idx = wg_idx - 1;
     int tid = threadIdx.x % 128;
 
-    
-
     int total_block_m = M / BM;
     int total_block_n = N / BN;
 
     if (threadIdx.x == 0) {
         for (int i = 0; i < QSIZE; ++i) {
-            init(&full[i], num_consumers * 128 + 1);
+            init(&full[i], 1);
             init(&empty[i], num_consumers + 1);
         }
         cde::fence_proxy_async_shared_cta();
@@ -482,7 +481,9 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
         int qidx = 0;
         for (int block_k_iter = 0; block_k_iter < num_blocks_k; ++block_k_iter, ++qidx) {
             if (qidx == QSIZE) qidx = 0;
-            full[qidx].wait(full[qidx].arrive());
+            // full[qidx].wait(full[qidx].arrive());
+            full[qidx].wait_parity(full_phase[qidx]);
+            full_phase[qidx] ^= 1;
             warpgroup_arrive();
             #pragma unroll    
             for (int m_it = 0; m_it < B_WG_M/WGMMA_M; ++m_it) {
