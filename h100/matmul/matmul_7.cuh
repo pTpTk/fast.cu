@@ -493,6 +493,9 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel7(int M, int N, int
         }
     }
 
+    int p = 0;
+    int qidx = 0;
+
     for(int cur_block_m = blockIdx.x / 8; cur_block_m < total_block_m; cur_block_m += 4) {
     for(int cur_block_n = blockIdx.x % 8; cur_block_n < total_block_n; cur_block_n += 8) {
 
@@ -575,7 +578,7 @@ void runKernel7(int M, int N, int K, bf16 *A, bf16 *B, bf16 *C, int *DB) {
     constexpr int BK = 64;
     constexpr int NUM_THREADS = 128*3;
     constexpr int QSIZE = 3;
-    constexpr int NUM_SM = 128;
+    constexpr int NUM_SM = 32;
 
     if (_prev_m != M) {
         d_tma_map_A = create_tensor_map<BM, BK>(A, M, K);
