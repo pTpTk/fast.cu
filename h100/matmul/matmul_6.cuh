@@ -445,7 +445,7 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
     if (threadIdx.x == 0) {
         for (int i = 0; i < QSIZE; ++i) {
             init(&full[i], num_consumers * 128 + 1);
-            init(&empty[i], num_consumers * 128 + 1);
+            init(&empty[i], num_consumers + 1);
         }
         cde::fence_proxy_async_shared_cta();
     }
@@ -455,7 +455,7 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
         constexpr int num_regs = (num_consumers == 1 ? 256 : (num_consumers == 2 ? 240 : 160));
         warpgroup_reg_alloc<num_regs>();
         for (int i = 0; i < QSIZE; ++i) {
-            barrier::arrival_token _ = empty[i].arrive();
+            if(tid == 0) barrier::arrival_token _ = empty[i].arrive();
         }
     }
 
@@ -494,10 +494,9 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel6(int M, int N, int
             }
             warpgroup_commit_batch();
             warpgroup_wait<0>();
-            barrier::arrival_token _ = empty[qidx].arrive();
+            if(tid == 0) barrier::arrival_token _ = empty[qidx].arrive();
         }
 
-        tid = threadIdx.x % 128;
         int lane = tid % 32;
         int warp = tid / 32;
         int row = warp*16 + lane / 4;
