@@ -504,8 +504,6 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel7(int M, int N, int
         constexpr int num_regs = (num_consumers <= 2 ? 24 : 32);
         warpgroup_reg_dealloc<num_regs>();
         if (tid == 0) {
-            int p = 0;
-            int qidx = 0;
             for (int block_k_iter = 0; block_k_iter < num_blocks_k; ++block_k_iter, ++qidx) {
                 if (qidx == QSIZE) { qidx = 0; p ^= 1; }
                 // empty[qidx].wait(empty[qidx].arrive());
@@ -519,8 +517,6 @@ __global__  __launch_bounds__(NUM_THREADS) void  matmulKernel7(int M, int N, int
     } else {
         float d[B_WG_M/WGMMA_M][WGMMA_N/16][8];
         memset(d, 0, sizeof(d));
-        int qidx = 0;
-        int p = 0;
         for (int block_k_iter = 0; block_k_iter < num_blocks_k; ++block_k_iter, ++qidx) {
             if (qidx == QSIZE) { qidx = 0; p ^= 1; }
             // full[qidx].wait(full[qidx].arrive());
@@ -596,6 +592,8 @@ void runKernel7(int M, int N, int K, bf16 *A, bf16 *B, bf16 *C, int *DB) {
         cudaFuncAttributeMaxDynamicSharedMemorySize, sMemSize));
 
     kernel<<<NUM_SM, NUM_THREADS, sMemSize>>>(M, N, K, C, d_tma_map_A, d_tma_map_B);
+    cudaCheck(cudaGetLastError());       // Immediate launch error
+    cudaCheck(cudaDeviceSynchronize());  // Device execution error
 }
     
 } // namespace M7
